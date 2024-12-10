@@ -6,7 +6,7 @@ import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
-import LandingPage from "./components/home/BillingPage";
+import LandingPage from "./components/billing/BillingPage";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -43,6 +43,7 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
+import BillingPage from "./components/billing/BillingPage";
 
 export default function App() {
   let i18nConfig = {
@@ -220,6 +221,12 @@ export default function App() {
                   path="/"
                   exact
                   component={() => <Home />}
+                  role=""
+                />
+                <SecureRoute
+                  path="/billing"
+                  exact
+                  component={() => <BillingPage />}
                   role=""
                 />
                 <SecureRoute
