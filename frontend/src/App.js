@@ -6,6 +6,7 @@ import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
+import LandingPage from "./components/home/BillingPage";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
