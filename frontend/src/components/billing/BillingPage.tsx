@@ -17,21 +17,20 @@ import {
   Select,
   SelectItem,
   NumberInput,
-  DatePicker,
-  DatePickerInput,
 } from "@carbon/react";
-import { Search } from "@carbon/icons-react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import { withRouter, RouteComponentProps } from "react-router-dom";
 
 // TypeScript interfaces
 interface Invoice {
   id: number;
-  name: string;
-  partner_id: [number, string];
+  name: string | false;
+  partner_id: [number, string] | false;
   amount_total: number;
   state: string;
   invoice_date: string;
+  invoice_user_id: [number, string];
+  company_id: [number, string];
 }
 
 interface NewInvoice {
@@ -45,6 +44,14 @@ interface Partner {
   id: number;
   name: string;
 }
+
+// Odoo configuration matching successful Postman request
+const odooConfig = {
+  baseURL: 'https://united-nations-development-programme.odoo.com/jsonrpc',
+  database: 'united-nations-development-programme',
+  userId: 2,
+  password: 'Silnam@123'
+};
 
 const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
   const intl = useIntl();
@@ -61,6 +68,8 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [showSuccessNotification, setShowSuccessNotification] = useState<boolean>(false);
 
+  const pageSizes = [10, 20, 30, 40, 50];
+
   const [newInvoice, setNewInvoice] = useState<NewInvoice>({
     partner_id: 0,
     amount_total: 0,
@@ -68,36 +77,33 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
     invoice_date: new Date().toISOString().split("T")[0],
   });
 
-  // Odoo JSON-RPC configuration
-  const odooConfig = {
-    baseURL: process.env.REACT_APP_ODOO_URL || '',
-    database: process.env.REACT_APP_ODOO_DB || '',
-    username: process.env.REACT_APP_ODOO_USERNAME || '',
-    password: process.env.REACT_APP_ODOO_PASSWORD || ''
-  };
-
-  // Fetch data on component mount
   useEffect(() => {
-    fetchInvoices();
-    fetchPartners();
+    let mounted = true;
 
-    // Cleanup function to handle unmounting
+    const fetchData = async () => {
+      if (mounted) {
+        await fetchInvoices();
+        await fetchPartners();
+      }
+    };
+
+    fetchData();
+
     return () => {
-      setInvoices([]);
-      setFilteredInvoices([]);
-      setPartners([]);
+      mounted = false;
     };
   }, []);
 
-  // Search functionality
   useEffect(() => {
-    const filtered = invoices.filter(
-      (invoice) =>
-        invoice.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.partner_id[1].toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = invoices.filter((invoice) => {
+      const nameMatch = invoice.name && 
+        invoice.name.toString().toLowerCase().includes(searchTerm.toLowerCase());
+      const partnerMatch = invoice.partner_id && 
+        invoice.partner_id[1].toLowerCase().includes(searchTerm.toLowerCase());
+      return nameMatch || partnerMatch;
+    });
     setFilteredInvoices(filtered);
-    setCurrentPage(1); // Reset to first page when filtering
+    setCurrentPage(1);
   }, [searchTerm, invoices]);
 
   const fetchInvoices = async () => {
@@ -117,7 +123,7 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
             method: "execute_kw",
             args: [
               odooConfig.database,
-              parseInt(odooConfig.username),
+              odooConfig.userId,
               odooConfig.password,
               "account.move",
               "search_read",
@@ -130,28 +136,29 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
                   "state",
                   "invoice_date",
                   "invoice_user_id",
-                  "company_id",
+                  "company_id"
                 ],
-                limit: 100,
-              },
-            ],
+                limit: 100
+              }
+            ]
           },
-          id: 1,
-        }),
+          id: 1
+        })
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error.data?.message || 'Failed to fetch invoices');
       }
 
-      const data = await response.json();
       if (data.result) {
         setInvoices(data.result);
         setFilteredInvoices(data.result);
       }
     } catch (err) {
-      setError("Failed to fetch invoices");
-      console.error(err);
+      console.error('Fetch invoices error:', err);
+      setError(err.message || "Failed to fetch invoices");
     } finally {
       setLoading(false);
     }
@@ -172,32 +179,33 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
             method: "execute_kw",
             args: [
               odooConfig.database,
-              2,
+              odooConfig.userId,
               odooConfig.password,
               "res.partner",
               "search_read",
               [[]],
               {
                 fields: ["id", "name"],
-                limit: 100,
-              },
-            ],
+                limit: 100
+              }
+            ]
           },
-          id: 2,
-        }),
+          id: 2
+        })
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error.data?.message || 'Failed to fetch partners');
       }
 
-      const data = await response.json();
       if (data.result) {
         setPartners(data.result);
       }
     } catch (err) {
-      console.error("Failed to fetch partners", err);
-      setError("Failed to fetch partners list");
+      console.error('Fetch partners error:', err);
+      setError(err.message || "Failed to fetch partners list");
     }
   };
 
@@ -220,44 +228,42 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
             method: "execute_kw",
             args: [
               odooConfig.database,
-              2,
+              odooConfig.userId,
               odooConfig.password,
               "account.move",
               "create",
-              [
-                {
-                  partner_id: newInvoice.partner_id,
-                  amount_total: newInvoice.amount_total,
-                  state: newInvoice.state,
-                  invoice_date: newInvoice.invoice_date,
-                },
-              ],
-            ],
+              [{
+                move_type: 'out_invoice',
+                partner_id: newInvoice.partner_id,
+                amount_total: newInvoice.amount_total,
+                state: newInvoice.state,
+                invoice_date: newInvoice.invoice_date,
+                company_id: 1
+              }]
+            ]
           },
-          id: 3,
-        }),
+          id: 3
+        })
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error.data?.message || 'Failed to create invoice');
       }
 
-      const data = await response.json();
-      if (data.result) {
-        setShowSuccessNotification(true);
-        setTimeout(() => setShowSuccessNotification(false), 5000);
-        fetchInvoices(); // Refresh the list
-        // Reset form
-        setNewInvoice({
-          partner_id: 0,
-          amount_total: 0,
-          state: "draft",
-          invoice_date: new Date().toISOString().split("T")[0],
-        });
-      }
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 5000);
+      fetchInvoices();
+      setNewInvoice({
+        partner_id: 0,
+        amount_total: 0,
+        state: "draft",
+        invoice_date: new Date().toISOString().split("T")[0],
+      });
     } catch (err) {
-      setError("Failed to create invoice");
-      console.error(err);
+      console.error('Create invoice error:', err);
+      setError(err.message || "Failed to create invoice");
     } finally {
       setIsSubmitting(false);
     }
@@ -276,13 +282,8 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
     }).format(amount);
   };
 
-  // If you need to navigate, use history.push('/route')
-  const handleNavigate = (route: string) => {
-    history.push(route);
-  };
-
   return (
-    <Grid fullWidth style={{ padding: "2rem", minHeight: "100vh" }}>
+    <Grid fullWidth>
       <Column lg={16} md={8} sm={4}>
         <h1 className="mb-6">Billing Management</h1>
 
@@ -315,7 +316,6 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
             placeholder="Search by invoice number or client name"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            renderIcon={Search}
           />
         </div>
 
@@ -331,13 +331,15 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
                   <TableHeader>Amount</TableHeader>
                   <TableHeader>Status</TableHeader>
                   <TableHeader>Date</TableHeader>
+                  <TableHeader>Created By</TableHeader>
+                  <TableHeader>Company</TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {getCurrentPageItems().map((invoice) => (
                   <TableRow key={invoice.id}>
-                    <TableCell>{invoice.name}</TableCell>
-                    <TableCell>{invoice.partner_id[1]}</TableCell>
+                    <TableCell>{invoice.name || 'N/A'}</TableCell>
+                    <TableCell>{invoice.partner_id ? invoice.partner_id[1] : 'N/A'}</TableCell>
                     <TableCell>{formatCurrency(invoice.amount_total)}</TableCell>
                     <TableCell>
                       <span className={`status-${invoice.state}`}>
@@ -347,6 +349,8 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
                     <TableCell>
                       {new Date(invoice.invoice_date).toLocaleDateString()}
                     </TableCell>
+                    <TableCell>{invoice.invoice_user_id[1]}</TableCell>
+                    <TableCell>{invoice.company_id[1]}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -355,6 +359,7 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
             <Pagination
               totalItems={filteredInvoices.length}
               pageSize={pageSize}
+              pageSizes={pageSizes}
               page={currentPage}
               onChange={({ page, pageSize: size }) => {
                 setCurrentPage(page);
@@ -394,15 +399,17 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
               <NumberInput
                 id="amount-input"
                 label="Amount"
-                value={newInvoice.amount_total}
-                onChange={(e: any) =>
+                value={newInvoice.amount_total || 0}
+                step={0.01}
+                min={0}
+                invalidText="Please enter a valid amount"
+                onChange={(e: any) => {
+                  const value = parseFloat(e.target.value) || 0;
                   setNewInvoice({
                     ...newInvoice,
-                    amount_total: Number(e.target.value),
-                  })
-                }
-                min={0}
-                step={0.01}
+                    amount_total: value
+                  });
+                }}
               />
 
               <Select
@@ -421,19 +428,18 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
                 <SelectItem value="paid" text="Paid" />
               </Select>
 
-              <DatePicker dateFormat="Y-m-d" datePickerType="single">
-                <DatePickerInput
-                  id="date-input"
-                  labelText="Invoice Date"
-                  value={newInvoice.invoice_date}
-                  onChange={(e) =>
-                    setNewInvoice({
-                      ...newInvoice,
-                      invoice_date: e.target.value,
-                    })
-                  }
-                />
-              </DatePicker>
+              <TextInput
+                id="date-input"
+                labelText="Invoice Date"
+                type="date"
+                value={newInvoice.invoice_date}
+                onChange={(e) =>
+                  setNewInvoice({
+                    ...newInvoice,
+                    invoice_date: e.target.value,
+                  })
+                }
+              />
             </div>
 
             <Button
