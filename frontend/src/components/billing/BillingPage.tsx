@@ -17,9 +17,19 @@ import {
   Select,
   SelectItem,
   NumberInput,
+  Tag,
+  Tile,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { withRouter, RouteComponentProps } from "react-router-dom";
+import { 
+  Search, 
+  Currency, 
+  UserAvatar, 
+  Calendar,
+  Enterprise,
+  Reset 
+} from "@carbon/icons-react";
 
 // TypeScript interfaces
 interface Invoice {
@@ -45,12 +55,24 @@ interface Partner {
   name: string;
 }
 
-// Odoo configuration matching successful Postman request
 const odooConfig = {
   baseURL: 'https://united-nations-development-programme.odoo.com/jsonrpc',
   database: 'united-nations-development-programme',
   userId: 2,
   password: 'Silnam@123'
+};
+
+const getStatusColor = (status: string): string => {
+  switch (status.toLowerCase()) {
+    case 'draft':
+      return 'gray';
+    case 'posted':
+      return 'green';
+    case 'paid':
+      return 'blue';
+    default:
+      return 'cool-gray';
+  }
 };
 
 const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
@@ -283,144 +305,198 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
   };
 
   return (
-    <Grid fullWidth>
+    <Grid fullWidth className="bg-white">
       <Column lg={16} md={8} sm={4}>
-        <h1 className="mb-6">Billing Management</h1>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-light">Billing Management</h1>
+            <Button
+              kind="ghost"
+              renderIcon={Reset}
+              onClick={fetchInvoices}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+          </div>
 
-        {error && (
-          <InlineNotification
-            kind="error"
-            title="Error"
-            subtitle={error}
-            hideCloseButton={false}
-            onClose={() => setError(null)}
-            className="mb-4"
-          />
-        )}
-
-        {showSuccessNotification && (
-          <InlineNotification
-            kind="success"
-            title="Success"
-            subtitle="Invoice created successfully"
-            hideCloseButton={false}
-            onClose={() => setShowSuccessNotification(false)}
-            className="mb-4"
-          />
-        )}
-
-        <div className="mb-6">
-          <TextInput
-            id="search"
-            labelText="Search invoices"
-            placeholder="Search by invoice number or client name"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {loading ? (
-          <Loading description="Loading invoices..." withOverlay={false} />
-        ) : (
-          <>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Invoice Number</TableHeader>
-                  <TableHeader>Client</TableHeader>
-                  <TableHeader>Amount</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader>Date</TableHeader>
-                  <TableHeader>Created By</TableHeader>
-                  <TableHeader>Company</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {getCurrentPageItems().map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell>{invoice.name || 'N/A'}</TableCell>
-                    <TableCell>{invoice.partner_id ? invoice.partner_id[1] : 'N/A'}</TableCell>
-                    <TableCell>{formatCurrency(invoice.amount_total)}</TableCell>
-                    <TableCell>
-                      <span className={`status-${invoice.state}`}>
-                        {invoice.state.charAt(0).toUpperCase() + invoice.state.slice(1)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(invoice.invoice_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>{invoice.invoice_user_id[1]}</TableCell>
-                    <TableCell>{invoice.company_id[1]}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <Pagination
-              totalItems={filteredInvoices.length}
-              pageSize={pageSize}
-              pageSizes={pageSizes}
-              page={currentPage}
-              onChange={({ page, pageSize: size }) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              }}
+          {error && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={error}
+              hideCloseButton={false}
+              onClose={() => setError(null)}
+              className="mb-6"
+              lowContrast
             />
-          </>
-        )}
+          )}
 
-        <div className="mt-8">
-          <h2 className="mb-4">Create New Invoice</h2>
-          <Form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-2 gap-4">
-              <Select
-                id="partner-select"
-                labelText="Client"
-                value={newInvoice.partner_id.toString()}
-                onChange={(e) =>
-                  setNewInvoice({
-                    ...newInvoice,
-                    partner_id: Number(e.target.value),
-                  })
-                }
-                invalid={isSubmitting && newInvoice.partner_id === 0}
-                invalidText="Please select a client"
-              >
-                <SelectItem value="0" text="Select a client" />
-                {partners.map((partner) => (
-                  <SelectItem
-                    key={partner.id}
-                    value={partner.id.toString()}
-                    text={partner.name}
+          {showSuccessNotification && (
+            <InlineNotification
+              kind="success"
+              title="Success"
+              subtitle="Invoice created successfully"
+              hideCloseButton={false}
+              onClose={() => setShowSuccessNotification(false)}
+              className="mb-6"
+              lowContrast
+            />
+          )}
+
+          <Tile className="mb-8 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center">
+                <TextInput
+                  id="search"
+                  labelText="Search invoices"
+                  placeholder="Search by invoice number or client name"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-96"
+                />
+              </div>
+              <div className="text-sm text-gray-600">
+                {filteredInvoices.length} invoices found
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <Loading 
+                  description="Loading invoices..." 
+                  withOverlay={false}
+                  small
+                />
+              </div>
+            ) : (
+              <>
+                <Table useZebraStyles>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeader>Invoice Number</TableHeader>
+                      <TableHeader>Client</TableHeader>
+                      <TableHeader>Amount</TableHeader>
+                      <TableHeader>Status</TableHeader>
+                      <TableHeader>Date</TableHeader>
+                      <TableHeader>Created By</TableHeader>
+                      <TableHeader>Company</TableHeader>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {getCurrentPageItems().map((invoice) => (
+                      <TableRow key={invoice.id}>
+                        <TableCell className="font-medium">
+                          {invoice.name || 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <UserAvatar size={16} className="mr-2" />
+                            {invoice.partner_id ? invoice.partner_id[1] : 'N/A'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Currency size={16} className="mr-2" />
+                            {formatCurrency(invoice.amount_total)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Tag
+                            type={getStatusColor(invoice.state)}
+                            size="sm"
+                          >
+                            {invoice.state.charAt(0).toUpperCase() + invoice.state.slice(1)}
+                          </Tag>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Calendar size={16} className="mr-2" />
+                            {new Date(invoice.invoice_date).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>{invoice.invoice_user_id[1]}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Enterprise size={16} className="mr-2" />
+                            {invoice.company_id[1]}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                <div className="mt-4">
+                  <Pagination
+                    totalItems={filteredInvoices.length}
+                    pageSize={pageSize}
+                    pageSizes={pageSizes}
+                    page={currentPage}
+                    onChange={({ page, pageSize: size }) => {
+                      setCurrentPage(page);
+                      setPageSize(size);
+                    }}
                   />
-                ))}
-              </Select>
+                </div>
+              </>
+            )}
+          </Tile>
 
-              <NumberInput
-                id="amount-input"
-                label="Amount"
-                value={newInvoice.amount_total || 0}
-                step={0.01}
-                min={0}
-                invalidText="Please enter a valid amount"
-                onChange={(e: any) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setNewInvoice({
-                    ...newInvoice,
-                    amount_total: value
-                  });
-                }}
-              />
+          <Tile className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-light">Create New Invoice</h2>
+            </div>
+            <Form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-2 gap-6">
+                <Select
+                  id="partner-select"
+                  labelText="Client"
+                  value={newInvoice.partner_id.toString()}
+                  onChange={(e) =>
+                    setNewInvoice({
+                      ...newInvoice,
+                      partner_id: Number(e.target.value),
+                    })
+                  }
+                  invalid={isSubmitting && newInvoice.partner_id === 0}
+                  invalidText="Please select a client"
+                >
+                  <SelectItem value="0" text="Select a client" />
+                  {partners.map((partner) => (
+                    <SelectItem
+                      key={partner.id}
+                      value={partner.id.toString()}
+                      text={partner.name}
+                    />
+                  ))}
+                </Select>
 
-              <Select
-                id="status-select"
-                labelText="Status"
-                value={newInvoice.state}
-                onChange={(e) =>
-                  setNewInvoice({
-                    ...newInvoice,
-                    state: e.target.value,
-                  })
+                <NumberInput
+                  id="amount-input"
+                  label="Amount"
+                  value={newInvoice.amount_total || 0}
+                  step={0.01}
+                  min={0}
+                  invalidText="Please enter a valid amount"
+                  onChange={(e: any) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setNewInvoice({
+                      ...newInvoice,
+                      amount_total: value
+                    });
+                  }}
+                />
+
+                <Select
+                  id="status-select"
+                  labelText="Status"
+                  value={newInvoice.state}
+                  onChange={(e) =>
+                    setNewInvoice({
+                      ...newInvoice,
+                      state: e.target.value,
+                    })
                 }
               >
                 <SelectItem value="draft" text="Draft" />
@@ -442,21 +518,23 @@ const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
               />
             </div>
 
-            <Button
-              type="submit"
-              className="mt-4"
-              disabled={
-                isSubmitting ||
-                newInvoice.partner_id === 0 ||
-                newInvoice.amount_total <= 0
-              }
-            >
-              {isSubmitting ? "Creating..." : "Create Invoice"}
-            </Button>
+            <div className="mt-6 flex justify-end">
+              <Button
+                type="submit"
+                disabled={
+                  isSubmitting ||
+                  newInvoice.partner_id === 0 ||
+                  newInvoice.amount_total <= 0
+                }
+              >
+                {isSubmitting ? "Creating..." : "Create Invoice"}
+              </Button>
+            </div>
           </Form>
-        </div>
-      </Column>
-    </Grid>
+        </Tile>
+      </div>
+    </Column>
+  </Grid>
   );
 };
 
