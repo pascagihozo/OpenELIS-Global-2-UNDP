@@ -22,8 +22,7 @@ import {
 } from "@carbon/react";
 import { Search } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { withRouter, RouteComponentProps } from "react-router-dom";
 
 // TypeScript interfaces
 interface Invoice {
@@ -47,9 +46,8 @@ interface Partner {
   name: string;
 }
 
-const BillingPage: React.FC = () => {
+const BillingPage: React.FC<RouteComponentProps> = ({ history }) => {
   const intl = useIntl();
-  const navigate = useNavigate();
 
   // State Management
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -61,8 +59,7 @@ const BillingPage: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(10);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [partners, setPartners] = useState<Partner[]>([]);
-  const [showSuccessNotification, setShowSuccessNotification] =
-    useState<boolean>(false);
+  const [showSuccessNotification, setShowSuccessNotification] = useState<boolean>(false);
 
   const [newInvoice, setNewInvoice] = useState<NewInvoice>({
     partner_id: 0,
@@ -73,16 +70,23 @@ const BillingPage: React.FC = () => {
 
   // Odoo JSON-RPC configuration
   const odooConfig = {
-    baseURL: process.env.REACT_APP_ODOO_URL,
-    database: process.env.REACT_APP_ODOO_DB,
-    username: process.env.REACT_APP_ODOO_USERNAME,
-    password: process.env.REACT_APP_ODOO_PASSWORD,
+    baseURL: process.env.REACT_APP_ODOO_URL || '',
+    database: process.env.REACT_APP_ODOO_DB || '',
+    username: process.env.REACT_APP_ODOO_USERNAME || '',
+    password: process.env.REACT_APP_ODOO_PASSWORD || ''
   };
 
-  // Fetch data from Odoo
+  // Fetch data on component mount
   useEffect(() => {
     fetchInvoices();
     fetchPartners();
+
+    // Cleanup function to handle unmounting
+    return () => {
+      setInvoices([]);
+      setFilteredInvoices([]);
+      setPartners([]);
+    };
   }, []);
 
   // Search functionality
@@ -90,7 +94,7 @@ const BillingPage: React.FC = () => {
     const filtered = invoices.filter(
       (invoice) =>
         invoice.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.partner_id[1].toLowerCase().includes(searchTerm.toLowerCase()),
+        invoice.partner_id[1].toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredInvoices(filtered);
     setCurrentPage(1); // Reset to first page when filtering
@@ -100,39 +104,50 @@ const BillingPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(odooConfig.baseURL, {
-        jsonrpc: "2.0",
-        method: "call",
-        params: {
-          service: "object",
-          method: "execute_kw",
-          args: [
-            odooConfig.database,
-            parseInt(odooConfig.username), // Convert to number if necessary
-            odooConfig.password,
-            "account.move",
-            "search_read",
-            [[]],
-            {
-              fields: [
-                "name",
-                "partner_id",
-                "amount_total",
-                "state",
-                "invoice_date",
-                "invoice_user_id",
-                "company_id",
-              ],
-              limit: 100,
-            },
-          ],
+      const response = await fetch(odooConfig.baseURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        id: 1,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "call",
+          params: {
+            service: "object",
+            method: "execute_kw",
+            args: [
+              odooConfig.database,
+              parseInt(odooConfig.username),
+              odooConfig.password,
+              "account.move",
+              "search_read",
+              [[]],
+              {
+                fields: [
+                  "name",
+                  "partner_id",
+                  "amount_total",
+                  "state",
+                  "invoice_date",
+                  "invoice_user_id",
+                  "company_id",
+                ],
+                limit: 100,
+              },
+            ],
+          },
+          id: 1,
+        }),
       });
 
-      if (response.data.result) {
-        setInvoices(response.data.result);
-        setFilteredInvoices(response.data.result);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.result) {
+        setInvoices(data.result);
+        setFilteredInvoices(data.result);
       }
     } catch (err) {
       setError("Failed to fetch invoices");
@@ -144,30 +159,41 @@ const BillingPage: React.FC = () => {
 
   const fetchPartners = async () => {
     try {
-      const response = await axios.post(odooConfig.baseURL, {
-        jsonrpc: "2.0",
-        method: "call",
-        params: {
-          service: "object",
-          method: "execute_kw",
-          args: [
-            odooConfig.database,
-            2,
-            odooConfig.password,
-            "res.partner",
-            "search_read",
-            [[]],
-            {
-              fields: ["id", "name"],
-              limit: 100,
-            },
-          ],
+      const response = await fetch(odooConfig.baseURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        id: 2,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "call",
+          params: {
+            service: "object",
+            method: "execute_kw",
+            args: [
+              odooConfig.database,
+              2,
+              odooConfig.password,
+              "res.partner",
+              "search_read",
+              [[]],
+              {
+                fields: ["id", "name"],
+                limit: 100,
+              },
+            ],
+          },
+          id: 2,
+        }),
       });
 
-      if (response.data.result) {
-        setPartners(response.data.result);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.result) {
+        setPartners(data.result);
       }
     } catch (err) {
       console.error("Failed to fetch partners", err);
@@ -181,32 +207,43 @@ const BillingPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await axios.post(odooConfig.baseURL, {
-        jsonrpc: "2.0",
-        method: "call",
-        params: {
-          service: "object",
-          method: "execute_kw",
-          args: [
-            odooConfig.database,
-            2,
-            odooConfig.password,
-            "account.move",
-            "create",
-            [
-              {
-                partner_id: newInvoice.partner_id,
-                amount_total: newInvoice.amount_total,
-                state: newInvoice.state,
-                invoice_date: newInvoice.invoice_date,
-              },
-            ],
-          ],
+      const response = await fetch(odooConfig.baseURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        id: 3,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "call",
+          params: {
+            service: "object",
+            method: "execute_kw",
+            args: [
+              odooConfig.database,
+              2,
+              odooConfig.password,
+              "account.move",
+              "create",
+              [
+                {
+                  partner_id: newInvoice.partner_id,
+                  amount_total: newInvoice.amount_total,
+                  state: newInvoice.state,
+                  invoice_date: newInvoice.invoice_date,
+                },
+              ],
+            ],
+          },
+          id: 3,
+        }),
       });
 
-      if (response.data.result) {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.result) {
         setShowSuccessNotification(true);
         setTimeout(() => setShowSuccessNotification(false), 5000);
         fetchInvoices(); // Refresh the list
@@ -220,6 +257,7 @@ const BillingPage: React.FC = () => {
       }
     } catch (err) {
       setError("Failed to create invoice");
+      console.error(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -236,6 +274,11 @@ const BillingPage: React.FC = () => {
       style: "currency",
       currency: "USD",
     }).format(amount);
+  };
+
+  // If you need to navigate, use history.push('/route')
+  const handleNavigate = (route: string) => {
+    history.push(route);
   };
 
   return (
@@ -295,13 +338,10 @@ const BillingPage: React.FC = () => {
                   <TableRow key={invoice.id}>
                     <TableCell>{invoice.name}</TableCell>
                     <TableCell>{invoice.partner_id[1]}</TableCell>
-                    <TableCell>
-                      {formatCurrency(invoice.amount_total)}
-                    </TableCell>
+                    <TableCell>{formatCurrency(invoice.amount_total)}</TableCell>
                     <TableCell>
                       <span className={`status-${invoice.state}`}>
-                        {invoice.state.charAt(0).toUpperCase() +
-                          invoice.state.slice(1)}
+                        {invoice.state.charAt(0).toUpperCase() + invoice.state.slice(1)}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -414,4 +454,4 @@ const BillingPage: React.FC = () => {
   );
 };
 
-export default BillingPage;
+export default withRouter(BillingPage);
