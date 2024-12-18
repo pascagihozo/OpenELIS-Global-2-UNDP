@@ -42,7 +42,7 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
-
+import BillingPage from "./components/billing/BillingPage.tsx";
 export default function App() {
   let i18nConfig = {
     locale: navigator.language.split(/[-_]/)[0],
@@ -231,6 +231,12 @@ export default function App() {
                   path="/MasterListsPage"
                   exact
                   component={() => <Admin />}
+                  role="Global Administrator"
+                />
+                <SecureRoute
+                  path="/billing"
+                  exact
+                  component={() => <BillingPage />}
                   role="Global Administrator"
                 />
                 <SecureRoute
