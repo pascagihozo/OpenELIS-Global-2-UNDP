@@ -99,7 +99,8 @@ const ActivityReport = ({ report }) => {
         getFromOpenElisServer("/rest/panels", setDataList);
         break;
       case "activityReportByTestSection":
-        getFromOpenElisServer("/rest/test-sections", setDataList);
+        // getFromOpenElisServer("/rest/test-sections", setDataList);
+        getFromOpenElisServer("/rest/user-test-sections/ALL", setDataList);
         break;
       default:
         break;

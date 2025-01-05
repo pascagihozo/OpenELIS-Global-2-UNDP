@@ -59,6 +59,7 @@ import org.openelisglobal.referral.valueholder.ReferralReason;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
 import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
+import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -72,6 +73,8 @@ import org.openelisglobal.typeoftestresult.valueholder.TypeOfTestResult;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.LocaleResolver;
 
@@ -137,6 +140,8 @@ public class DisplayListService implements LocaleChangeListener {
     private ProgramService programService;
     @Autowired
     private LocaleResolver localeResolver;
+    @Autowired
+    private UserService userService;
 
     @PostConstruct
     private void setupGlobalVariables() {
@@ -906,14 +911,77 @@ public class DisplayListService implements LocaleChangeListener {
         return qaEvents;
     }
 
+//    private List<IdValuePair> createTestSectionActiveList() {
+//        List<IdValuePair> testSectionsPairs = new ArrayList<>();
+//        List<TestSection> testSections = testSectionService.getAllActiveTestSections();
+//
+//        for (TestSection section : testSections) {
+//            testSectionsPairs.add(new IdValuePair(section.getId(), section.getLocalizedName()));
+//        }
+//
+//        return testSectionsPairs;
+//    }
+
+//    // In DisplayListService class
+//    @Autowired
+//    private UserService userService;
+//
+//    private List<IdValuePair> createTestSectionActiveList() {
+//        // Get current user's ID from SecurityContextHolder
+//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+//        String systemUserId = auth.getName(); // This will give us the user ID we need
+//
+//        // Get authorized test sections using existing userService
+//        List<IdValuePair> authorizedSections = userService.getUserTestSections(systemUserId, null);
+//
+//        return authorizedSections != null ? authorizedSections : new ArrayList<>();
+//    }
+
+//    @Autowired
+//    private UserService userService;
+//
+//    private List<IdValuePair> createTestSectionActiveList() {
+//        // Get current user's ID from SecurityContextHolder
+//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+//        if (auth == null) {
+//            throw new IllegalStateException("Authentication object is null. User is not authenticated.");
+//        }
+//
+//        String systemUserId = auth.getName();
+//        System.out.println("System user ID: " + systemUserId);
+//
+//        // Get authorized test sections using existing userService
+//        if (userService == null) {
+//            throw new IllegalStateException("UserService is not properly injected.");
+//        }
+//
+//        List<IdValuePair> authorizedSections = userService.getUserTestSections(systemUserId, null);
+//        System.out.println("Authorized sections: " + authorizedSections);
+//
+//        return authorizedSections != null ? authorizedSections : new ArrayList<>();
+//    }
+
     private List<IdValuePair> createTestSectionActiveList() {
+        try {
+            // Get current user's ID from SecurityContextHolder
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                String systemUserId = auth.getName();
+                // Get authorized test sections using existing userService
+                List<IdValuePair> authorizedSections = userService.getUserTestSections(systemUserId, null);
+                return authorizedSections != null ? authorizedSections : new ArrayList<>();
+            }
+        } catch (Exception e) {
+            // If there's any error getting authentication (like during startup), return all
+            // sections
+        }
+
+        // Default behavior: return all sections if not authenticated or error occurs
         List<IdValuePair> testSectionsPairs = new ArrayList<>();
         List<TestSection> testSections = testSectionService.getAllActiveTestSections();
-
         for (TestSection section : testSections) {
             testSectionsPairs.add(new IdValuePair(section.getId(), section.getLocalizedName()));
         }
-
         return testSectionsPairs;
     }
 

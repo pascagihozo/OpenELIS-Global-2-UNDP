@@ -153,10 +153,11 @@ function ProgramManagement() {
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/PROGRAM", fetchPrograms);
-    getFromOpenElisServer(
-      "/rest/displayList/TEST_SECTION_ACTIVE",
-      fetchTestSections,
-    );
+    // getFromOpenElisServer(
+    //   "/rest/displayList/TEST_SECTION_ACTIVE",
+    //   fetchTestSections,
+    // );
+    getFromOpenElisServer("/rest/user-test-sections/ALL", fetchTestSections);
 
     return () => {
       componentMounted.current = false;

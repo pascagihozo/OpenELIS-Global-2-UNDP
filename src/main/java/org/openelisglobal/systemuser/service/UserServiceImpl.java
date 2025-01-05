@@ -236,20 +236,41 @@ public class UserServiceImpl implements UserService {
 
                 }
 
+//                List<String> userLabUnits = new ArrayList<>();
+//                UserLabUnitRoles userLabRoles = getUserLabUnitRoles(systemUserId);
+//                if (userLabRoles != null) {
+//                    userLabRoles.getLabUnitRoleMap().forEach(roles -> {
+//                        if (roleId == null) {
+//                            userLabUnits.add(roles.getLabUnit());
+//                        } else {
+//                            if (roles.getRoles().contains(roleId)) {
+//                                userLabUnits.add(roles.getLabUnit());
+//                            }
+//                        }
+//
+//                    });
+//                }
+
                 List<String> userLabUnits = new ArrayList<>();
                 UserLabUnitRoles userLabRoles = getUserLabUnitRoles(systemUserId);
                 if (userLabRoles != null) {
+                    System.out.println("User Lab Roles: " + userLabRoles);
                     userLabRoles.getLabUnitRoleMap().forEach(roles -> {
                         if (roleId == null) {
+                            System.out.println("Adding lab unit: " + roles.getLabUnit());
                             userLabUnits.add(roles.getLabUnit());
                         } else {
                             if (roles.getRoles().contains(roleId)) {
+                                System.out.println("Adding lab unit for role: " + roles.getLabUnit());
                                 userLabUnits.add(roles.getLabUnit());
                             }
                         }
-
                     });
                 }
+                System.out.println("Final user lab units: " + userLabUnits);
+
+//                end of changes
+
                 List<IdValuePair> allTestSections = DisplayListService.getInstance()
                         .getList(ListType.TEST_SECTION_ACTIVE);
                 if (userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS)) {
