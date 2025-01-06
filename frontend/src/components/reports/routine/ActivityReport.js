@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useContext } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   Form,
@@ -21,11 +21,14 @@ import "../../Style.css";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { encodeDate } from "../../utils/Utils";
 import config from "../../../config.json";
+import { ConfigurationContext } from "../layout/Layout";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
 const ActivityReport = ({ report }) => {
   const intl = useIntl();
   const [loading, setLoading] = useState(true);
   const [notificationVisible, setNotificationVisible] = useState(false);
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [reportFormValues, setReportFormValues] = useState({
     startDate: null,
     endDate: null,
@@ -59,16 +62,16 @@ const ActivityReport = ({ report }) => {
     setLoading(true);
     let reportType = "";
     let additionalParams = "";
-    switch (selectedReportType) {
-      case "byTest":
+    switch (report) {  // Changed from selectedReportType to report
+      case "activityReportByTest":
         reportType = "activityReportByTest";
         additionalParams = "report=activityReportByTest";
         break;
-      case "byPanel":
+      case "activityReportByPanel":
         reportType = "activityReportByPanel";
         additionalParams = "report=activityReportByPanel";
         break;
-      case "byUnit":
+      case "activityReportByTestSection":
         reportType = "activityReportByTestSection";
         additionalParams = "report=activityReportByTestSection";
         break;
@@ -77,15 +80,33 @@ const ActivityReport = ({ report }) => {
     }
     const baseParams = `${additionalParams}&type=indicator&report=${reportType}`;
     const baseUrl = `${config.serverBaseUrl}/ReportPrint`;
-    const url = `${baseUrl}?${baseParams}&lowerDateRange=${reportFormValues.startDate}&upperDateRange=${reportFormValues.endDate}`;
+    const url = `${baseUrl}?${baseParams}&lowerDateRange=${reportFormValues.startDate}&upperDateRange=${reportFormValues.endDate}&value=${reportFormValues.value}`;
     window.open(url, "_blank");
     setLoading(false);
     setNotificationVisible(true);
   };
 
   const setDataList = (data) => {
-    setList(data);
-    console.log("data: ", data);
+    console.log("Raw API data: ", data);
+    
+    if (report === "activityReportByTestSection" && userSessionDetails?.userLabRolesMap) {
+      // Get departments where user has Reports role
+      const authorizedDepartments = Object.entries(userSessionDetails.userLabRolesMap)
+        .filter(([dept, roles]) => roles.includes('Reports'))
+        .map(([dept]) => dept);
+      
+      console.log("Authorized departments: ", authorizedDepartments);
+      
+      // Filter data to only show authorized departments
+      const filteredData = data.filter(item => 
+        authorizedDepartments.includes(item.value)
+      );
+      
+      console.log("Filtered data: ", filteredData);
+      setList(filteredData);
+    } else {
+      setList(data);
+    }
     setLoading(false);
   };
 
@@ -93,19 +114,17 @@ const ActivityReport = ({ report }) => {
     switch (report) {
       case "activityReportByTest":
         getFromOpenElisServer("/rest/test-list", setDataList);
-        console.log("list: ", list);
         break;
       case "activityReportByPanel":
         getFromOpenElisServer("/rest/panels", setDataList);
         break;
       case "activityReportByTestSection":
-        // getFromOpenElisServer("/rest/test-sections", setDataList);
         getFromOpenElisServer("/rest/user-test-sections/ALL", setDataList);
         break;
       default:
         break;
     }
-  }, [report]);
+  }, [report, userSessionDetails]);  // Added userSessionDetails to dependencies
 
   return (
     <>
@@ -128,7 +147,7 @@ const ActivityReport = ({ report }) => {
                 <Section>
                   <br />
                   <h5>
-                    <FormattedMessage id="select date Range" />
+                    <FormattedMessage id="select.date.range" />
                   </h5>
                 </Section>
                 <div className="inlineDiv">
@@ -160,9 +179,7 @@ const ActivityReport = ({ report }) => {
                   />
                 </div>
               </Column>
-              <div className="inlineDiv">hihih</div>
-              <Row></Row>
-              <Column log={15}>
+              <Column lg={10}>
                 {list && list.length > 0 && (
                   <Select
                     id="type"
@@ -195,9 +212,8 @@ const ActivityReport = ({ report }) => {
               <br />
               <Button
                 type="button"
-                onClick={() =>
-                  handleSubmit("activityReportByTest", "RoutineReport")
-                }
+                onClick={handleSubmit}
+                disabled={!reportFormValues.value || !reportFormValues.startDate || !reportFormValues.endDate}
               >
                 <FormattedMessage
                   id="label.button.generatePrintableVersion"
