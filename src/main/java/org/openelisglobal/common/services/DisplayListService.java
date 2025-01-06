@@ -960,7 +960,7 @@ public class DisplayListService implements LocaleChangeListener {
 //
 //        return authorizedSections != null ? authorizedSections : new ArrayList<>();
 //    }
-
+    @Autowired
     private List<IdValuePair> createTestSectionActiveList() {
         try {
             // Get current user's ID from SecurityContextHolder
