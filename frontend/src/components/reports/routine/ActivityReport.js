@@ -62,7 +62,9 @@ const ActivityReport = ({ report }) => {
     setLoading(true);
     let reportType = "";
     let additionalParams = "";
-    switch (report) {  // Changed from selectedReportType to report
+    switch (
+      report // Changed from selectedReportType to report
+    ) {
       case "activityReportByTest":
         reportType = "activityReportByTest";
         additionalParams = "report=activityReportByTest";
@@ -88,20 +90,25 @@ const ActivityReport = ({ report }) => {
 
   const setDataList = (data) => {
     console.log("Raw API data: ", data);
-    
-    if (report === "activityReportByTestSection" && userSessionDetails?.userLabRolesMap) {
+
+    if (
+      report === "activityReportByTestSection" &&
+      userSessionDetails?.userLabRolesMap
+    ) {
       // Get departments where user has Reports role
-      const authorizedDepartments = Object.entries(userSessionDetails.userLabRolesMap)
-        .filter(([dept, roles]) => roles.includes('Reports'))
+      const authorizedDepartments = Object.entries(
+        userSessionDetails.userLabRolesMap,
+      )
+        .filter(([dept, roles]) => roles.includes("Reports"))
         .map(([dept]) => dept);
-      
+
       console.log("Authorized departments: ", authorizedDepartments);
-      
+
       // Filter data to only show authorized departments
-      const filteredData = data.filter(item => 
-        authorizedDepartments.includes(item.value)
+      const filteredData = data.filter((item) =>
+        authorizedDepartments.includes(item.value),
       );
-      
+
       console.log("Filtered data: ", filteredData);
       setList(filteredData);
     } else {
@@ -124,7 +131,7 @@ const ActivityReport = ({ report }) => {
       default:
         break;
     }
-  }, [report, userSessionDetails]);  // Added userSessionDetails to dependencies
+  }, [report, userSessionDetails]); // Added userSessionDetails to dependencies
 
   return (
     <>
@@ -213,7 +220,11 @@ const ActivityReport = ({ report }) => {
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!reportFormValues.value || !reportFormValues.startDate || !reportFormValues.endDate}
+                disabled={
+                  !reportFormValues.value ||
+                  !reportFormValues.startDate ||
+                  !reportFormValues.endDate
+                }
               >
                 <FormattedMessage
                   id="label.button.generatePrintableVersion"
