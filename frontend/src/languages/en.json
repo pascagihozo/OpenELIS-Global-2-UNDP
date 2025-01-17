@@ -958,7 +958,7 @@
   "input.placeholder.selectTest": "Select Test Type",
   "input.placeholder.selectPanel": "Select Panel Type",
   "input.placeholder.selectPriority": "Select Priority",
-  "input.placeholder.selectTestSection": "Select All units",
+  "input.placeholder.selectTestSection": "Select Unit Type",
   "audittrail.table.heading.time": "Time",
   "audittrail.table.heading.item": "Item",
   "audittrail.table.heading.action": "Action",
